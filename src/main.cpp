@@ -1,60 +1,58 @@
 #include <iostream>
 #include <cmath>
 #include <vector>
+#include <mutex>
+#include <memory>
+#include "../inc/imprumut.hpp"
+#include "../inc/patrulater.hpp"
 
 using namespace std;
 
-class Patrulater
-{
-protected:
-    float lungime; // lungimiile sunt egale
-    float latime; // latimile sunt egale
-    string *descriere; // o descriere a formei geometrice
-public:
-    Patrulater() = delete;
-    Patrulater(const Patrulater &p) : Patrulater(p.lungime, p.latime, *p.descriere){
-        cout << "S-a apelat Copy constructor din Patrulater!\n";
+Patrulater::Patrulater(const Patrulater &p) : Patrulater(p.lungime, p.latime, *p.descriere){
+    cout << "S-a apelat Copy constructor din Patrulater!\n";
+}
+Patrulater::Patrulater(const Patrulater &&p){
+    descriere = new string;
+    *descriere = *p.descriere;
+    latime = p.latime;
+    lungime = p.lungime;
+    cout << "S-a apelat Move constructor din Patrulater!\n";
+}
+Patrulater::Patrulater(float L, float l){
+    latime = l;
+    lungime = L;
+    descriere = new string("TO BE SET!");
+    cout << "Un obiect de tip Patrulater a fost creat cu succes!\n";
+}
+Patrulater::Patrulater(float L, float l, string des){
+    latime = l;
+    lungime = L;
+    descriere = new string(des);
+    cout << "Un obiect de tip Patrulater cu descriere a fost creat cu succes!\n";
+}
+Patrulater::Patrulater(float latura){
+    lungime = latura;
+    latime = latura;
+    descriere = new string("TO BE SET!");
+    cout << "Un obiect de tip Patrulater cu laturile egale a fost creat cu succes!\n";
+}
+Patrulater::Patrulater(float latura, string des){
+    lungime = latura;
+    latime = latura;
+    descriere = new string(des);
+    cout << "Un obiect de tip Patrulater cu laturile egale si cu descriere a fost creat cu succes!\n";
+}
+Patrulater::~Patrulater(){
+    delete descriere;
+    cout << "Obiectul de tip Patrulater a fost sters cu succes!\n";
+}
+void Patrulater::imprumutaForma(){
+    if(!esteImprumutat){
+        imprumutat->lock();
+        cout << "Forma cu lungimea " << lungime << " si latimea " << latime <<" a fost imprumutata!\n";
+        imprumutat->unlock();
     }
-    Patrulater(const Patrulater &&p){
-        descriere = new string;
-        *descriere = *p.descriere;
-        latime = p.latime;
-        lungime = p.lungime;
-        cout << "S-a apelat Move constructor din Patrulater!\n";
-    }
-    Patrulater(float L, float l){
-        latime = l;
-        lungime = L;
-        descriere = new string("TO BE SET!");
-        cout << "Un obiect de tip Patrulater a fost creat cu succes!\n";
-    }
-    Patrulater(float L, float l, string des){
-        latime = l;
-        lungime = L;
-        descriere = new string(des);
-        cout << "Un obiect de tip Patrulater cu descriere a fost creat cu succes!\n";
-    }
-    Patrulater(float latura){
-        lungime = latura;
-        latime = latura;
-        descriere = new string("TO BE SET!");
-        cout << "Un obiect de tip Patrulater cu laturile egale a fost creat cu succes!\n";
-    }
-    Patrulater(float latura, string des){
-        lungime = latura;
-        latime = latura;
-        descriere = new string(des);
-        cout << "Un obiect de tip Patrulater cu laturile egale si cu descriere a fost creat cu succes!\n";
-    }
-    virtual ~Patrulater(){
-        delete descriere;
-        cout << "Obiectul de tip Patrulater a fost sters cu succes!\n";
-    }
-
-    virtual void arie() = 0;
-    virtual void perimetru() = 0;
-    virtual void descriere_forma() = 0;
-};
+}
 
 class Dreptunghi : public Patrulater
 {
@@ -192,6 +190,30 @@ public:
     }
 };
 
+/*------------------tema-6---------------------*/
+Imprumut::Imprumut(Patrulater *p){
+    patrulater = p;
+    mutex_pointer = make_unique<mutex>();
+    mutex_pointer->unlock();
+}
+Imprumut::~Imprumut(){
+    unlock();
+}
+void Imprumut::lock(){
+    if(!patrulater->esteImprumutat){
+        mutex_pointer->lock();
+        cout << "S-a imprumutat forma!\n";
+        patrulater->esteImprumutat = true;
+    }
+}
+void Imprumut::unlock(){
+    if(patrulater->esteImprumutat){
+        mutex_pointer->unlock();
+        cout << "S-a returnat forma!\n";
+        patrulater->esteImprumutat = false;
+    }
+}
+
 int main(){
     cout << "Dreptunghi *d = new Dreptunghi(10.0, 5.0);\n\n"; 
     Dreptunghi *d = new Dreptunghi(10.0, 5.0);
@@ -277,5 +299,24 @@ int main(){
     //self assigment
     nou_romb = nou_romb;
 
+    cout <<"\n-------------------------------------------------------------------------------------------------------------------------\n";
+
+    shared_ptr<Patrat> shared_patrat = make_shared<Patrat>(20, "Patrat de latura 20");
+    shared_patrat->descriere_forma();
+
+    shared_ptr<Dreptunghi> shared_dreptunghi = make_shared<Dreptunghi>(20, 40, "Dreptunghi de 20 si 40!");
+    shared_dreptunghi->descriere_forma();
+
+    shared_ptr<Patrulater> shared_patrulater = shared_dreptunghi;
+    shared_patrulater->descriere_forma();
+
+    shared_ptr<Dreptunghi> dreptunghi_imprumut = make_shared<Dreptunghi>(10, 20, "Dreptunghi cu laturile de 10 si 20!");
+    shared_ptr<Dreptunghi> profesor1(dreptunghi_imprumut);
+    shared_ptr<Dreptunghi> profesor2(dreptunghi_imprumut);
+    profesor1->descriere_forma();
+    profesor2->descriere_forma();
+    
+    profesor1->imprumutaForma();
+    profesor2->imprumutaForma();
     return 0;
 }
