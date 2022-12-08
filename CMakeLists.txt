@@ -17,4 +17,4 @@ else()
 endif()
 
 # Define the executable
-add_executable(${myproject} inc/imprumut.hpp src/main.cpp)
+add_executable(${myproject} inc/patrulater.hpp inc/imprumut.hpp src/main.cpp)
